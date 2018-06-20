@@ -246,12 +246,8 @@ contract EthTeamContract is StandardToken, Ownable {
         if (_to != address(this)) {
             return super.transfer(_to, _value);
         }
-        require(_value <= balances_[msg.sender] && status == 0);
-        // If gameTime is enabled (larger than 1514764800 (2018-01-01))
-        if (gameTime > 1514764800) {
-            // We will not allowed to sell after 5 minutes (300 seconds) before game start
-            require(gameTime - 300 > block.timestamp);
-        }
+        // We are only allowed to sell after end of game
+        require(_value <= balances_[msg.sender] && status == 0 && gameTime == 0);
         balances_[msg.sender] = balances_[msg.sender].sub(_value);
         totalSupply_ = totalSupply_.sub(_value);
         uint256 weiAmount = price.mul(_value);
@@ -267,12 +263,8 @@ contract EthTeamContract is StandardToken, Ownable {
     * The total supply will also be increased.
     */
     function() payable public {
-        require(status == 0 && price > 0);
-        // If gameTime is enabled (larger than 1514764800 (2018-01-01))
-        if (gameTime > 1514764800) {
-            // We will not allowed to sell after 5 minutes (300 seconds) before game start
-            require(gameTime - 300 > block.timestamp);
-        }
+        // We are not allowed to buy after game start
+        require(status == 0 && price > 0 && gameTime > block.timestamp);
         uint256 amount = msg.value.div(price);
         balances_[msg.sender] = balances_[msg.sender].add(amount);
         totalSupply_ = totalSupply_.add(amount);
@@ -291,6 +283,16 @@ contract EthTeamContract is StandardToken, Ownable {
         require(status != _status);
         status = _status;
         emit ChangeStatus(address(this), _status);
+    }
+
+    /**
+    * @dev Change the fee owner.
+    *
+    * @param _feeOwner The new fee owner.
+    */
+    function changeFeeOwner(address _feeOwner) onlyOwner public {
+        require(_feeOwner != feeOwner && _feeOwner != address(0));
+        feeOwner = _feeOwner;
     }
 
     /**
